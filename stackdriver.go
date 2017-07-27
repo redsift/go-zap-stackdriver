@@ -15,13 +15,14 @@ import (
 
 	"cloud.google.com/go/logging"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/buffer"
+	"go.uber.org/zap/zapcore"
 )
 
 type googleEncoder struct {
-	lg  *logging.Logger
-	buf map[string]interface{}
+	lg   *logging.Logger
+	buf  map[string]interface{}
+	pool buffer.Pool
 }
 
 func New(gProjectId, gLogId string) *zap.Logger {
@@ -49,7 +50,8 @@ func New(gProjectId, gLogId string) *zap.Logger {
 
 func NewEncoder(lg *logging.Logger) *googleEncoder {
 	buf := make(map[string]interface{})
-	return &googleEncoder{lg: lg, buf: buf}
+
+	return &googleEncoder{lg: lg, buf: buf, pool: buffer.NewPool()}
 }
 
 // Key value impl
@@ -161,7 +163,7 @@ func (g *googleEncoder) Clone() zapcore.Encoder {
 	for key, value := range g.buf {
 		buf[key] = value
 	}
-	return &googleEncoder{lg: g.lg, buf: buf}
+	return &googleEncoder{lg: g.lg, buf: buf, pool: g.pool}
 }
 
 func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
@@ -186,9 +188,17 @@ func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field)
 
 	g.buf["msg"] = entry.Message
 	e := logging.Entry{Timestamp: entry.Time, Payload: g.buf, Severity: sev}
-	g.lg.Log(e)
 
-	return nil, nil
+	g.Free()
+
+	g.lg.Log(e)
+	return g.pool.Get(), nil
+}
+
+// Encoder impl
+func (g *googleEncoder) Free() {
+	// no-op
+	g.buf = make(map[string]interface{})
 }
 
 // OpenNamespace opens an isolated namespace where all subsequent fields will
@@ -198,42 +208,10 @@ func (g *googleEncoder) OpenNamespace(key string) {
 	//TODO
 }
 
-
-
 /*
 
-// Encoder impl
-func (g *googleEncoder) Free() {
-	// no-op
-	g.buf = make(map[string]interface{})
-}
 
 
-func (g *googleEncoder) WriteEntry(_ io.Writer, msg string, level zapcore.Level, time time.Time) error {
-	sev := logging.Default
-
-	switch level {
-	case zapcore.DebugLevel:
-		sev = logging.Debug
-	case zapcore.InfoLevel:
-		sev = logging.Info
-	case zapcore.WarnLevel:
-		sev = logging.Warning
-	case zapcore.ErrorLevel:
-		sev = logging.Error
-	case zapcore.DPanicLevel:
-		sev = logging.Critical
-	case zapcore.PanicLevel:
-		sev = logging.Alert
-	case zapcore.FatalLevel:
-		sev = logging.Emergency
-	}
-
-	g.buf["msg"] = msg
-	e := logging.Entry{Timestamp: time, Payload: g.buf, Severity: sev}
-	g.lg.Log(e)
-	return nil
-}
 */
 type googleWriterSyncer struct {
 	lg *logging.Logger
