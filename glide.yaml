@@ -1,0 +1,7 @@
+# Glide YAML configuration file
+package: github.com/redsift/go-zap-stackdriver
+
+# Declare your project's dependencies.
+import:
+  - package: cloud.google.com/go/logging
+  - package: github.com/uber-go/zap
