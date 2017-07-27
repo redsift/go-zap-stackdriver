@@ -257,7 +257,7 @@ func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field)
 	}
 	buf["msg"] = entry.Message
 
-	e := logging.Entry{Timestamp: entry.Time, Payload: g.buf, Severity: sev}
+	e := logging.Entry{Timestamp: entry.Time, Payload: buf, Severity: sev}
 
 	g.lg.Log(e)
 	return g.pool.Get(), nil
