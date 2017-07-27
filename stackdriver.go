@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"time"
 
+	"math"
+
 	"cloud.google.com/go/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -186,10 +188,76 @@ func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field)
 		sev = logging.Emergency
 	}
 
-	g.buf["msg"] = entry.Message
-	e := logging.Entry{Timestamp: entry.Time, Payload: g.buf, Severity: sev}
+	buf := make(map[string]interface{})
+	for key, value := range g.buf {
+		buf[key] = value
+	}
+	for _, f := range fields {
+		switch f.Type {
+		case zapcore.ArrayMarshalerType:
 
-	g.Free()
+			//TODO:
+		case zapcore.ObjectMarshalerType:
+			//TODO:
+		case zapcore.BinaryType:
+			buf[f.Key] = f.Interface
+		case zapcore.BoolType:
+			buf[f.Key] = f.Integer == 1
+		case zapcore.ByteStringType:
+			buf[f.Key] = f.Interface
+		case zapcore.Complex128Type:
+			buf[f.Key] = f.Interface
+		case zapcore.Complex64Type:
+			buf[f.Key] = f.Interface
+		case zapcore.DurationType:
+			buf[f.Key] = time.Duration(f.Integer)
+		case zapcore.Float64Type:
+			buf[f.Key] = math.Float64frombits(uint64(f.Integer))
+		case zapcore.Float32Type:
+			buf[f.Key] = math.Float32frombits(uint32(f.Integer))
+		case zapcore.Int64Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Int32Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Int16Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Int8Type:
+			buf[f.Key] = f.Integer
+		case zapcore.StringType:
+			buf[f.Key] = f.String
+		case zapcore.TimeType:
+			if f.Interface != nil {
+				buf[f.Key] = time.Unix(0, f.Integer).In(f.Interface.(*time.Location))
+			} else {
+				// Fall back to UTC if location is nil.
+				buf[f.Key] = time.Unix(0, f.Integer)
+			}
+		case zapcore.Uint64Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Uint32Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Uint16Type:
+			buf[f.Key] = f.Integer
+		case zapcore.Uint8Type:
+			buf[f.Key] = f.Integer
+		case zapcore.UintptrType:
+			buf[f.Key] = f.Integer
+		case zapcore.ReflectType:
+			buf[f.Key] = f.Interface
+		case zapcore.NamespaceType:
+			//TODO
+		case zapcore.StringerType:
+			buf[f.Key] = f.Interface.(fmt.Stringer).String()
+		case zapcore.ErrorType:
+			buf[f.Key] = f.Interface
+		case zapcore.SkipType:
+			break
+
+		}
+	}
+	buf["msg"] = entry.Message
+
+	e := logging.Entry{Timestamp: entry.Time, Payload: g.buf, Severity: sev}
 
 	g.lg.Log(e)
 	return g.pool.Get(), nil
@@ -212,7 +280,7 @@ func (g *googleEncoder) OpenNamespace(key string) {
 
 
 
-*/
+ */
 type googleWriterSyncer struct {
 	lg *logging.Logger
 }
