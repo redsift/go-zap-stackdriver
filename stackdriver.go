@@ -210,7 +210,7 @@ func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field)
 		case zapcore.Complex64Type:
 			buf[f.Key] = f.Interface
 		case zapcore.DurationType:
-			buf[f.Key] = time.Duration(f.Integer)
+			buf[f.Key] = time.Duration(f.Integer).Seconds()
 		case zapcore.Float64Type:
 			buf[f.Key] = math.Float64frombits(uint64(f.Integer))
 		case zapcore.Float32Type:
@@ -249,7 +249,7 @@ func (g *googleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field)
 		case zapcore.StringerType:
 			buf[f.Key] = f.Interface.(fmt.Stringer).String()
 		case zapcore.ErrorType:
-			buf[f.Key] = f.Interface
+			buf[f.Key] = f.Interface.(error).Error()
 		case zapcore.SkipType:
 			break
 
