@@ -19,6 +19,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 )
 
 type googleEncoder struct {
@@ -32,7 +34,7 @@ func New(gProjectId, gLogId string) *zap.Logger {
 
 	ctx := context.Background()
 
-	client, err := logging.NewClient(ctx, gProjectId)
+	client, err := logging.NewClient(ctx, gProjectId, option.WithGRPCDialOption(grpc.WithTimeout(5*time.Second)))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create logging client: %v", err))
 	}
